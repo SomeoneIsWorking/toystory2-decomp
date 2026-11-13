@@ -72,11 +72,18 @@ column by column. Their callers are update code (`0x80065CD0`, `0x800660B0`, `0x
 `0x8006F938`, `0x80076334`..`0x8007678C`, `0x80077C68`, `0x80077D44`, `0x8007844C`, `0x8007855C`,
 `0x8007D0E4`..`0x8007D4D8`).
 
-In Andy's House, idle, one of the 157 visible instances moves: `0x8014FA24` (kind `0x49`), its position still and
-its angle halfwords `+0x0C/+0x0E/+0x10` advancing by 40/80/80 a tick. Its group matrix (`0x801AFC4C`) is rewritten
-once a tick by the draw section: a call of the world pass `0x8002A070` alone rewrites it, and with frame
-interpolation on every replay of the section rewrites it to the same value. Which instruction stores it is not
-recorded yet; under the dynarec a store watch reports the registers of the last synchronisation, not of the store.
+### The effect pass's spinners `0x80044C18`
+
+The effect pool `0x800BB3CC` points at a u16 count and then records of `0x10` from `+4`: position s32 `+0x00/+0x04/
++0x08`, byte `+0xC`, flags `+0xD` (bit 7 set while drawn), s16 `+0xE` (`0x7FFF`: no sprite). A record within reach of
+the camera whose byte `+0xC` is below `0x30` draws a sprite; one at `0x30` or above names `AreaObjects` entry `+0xC`.
+While `AlternateUpdateMode` is clear and that entry's group holds a packet for the buffer, the pass steps the
+instance's angles by `ElapsedFields` times 10, `((i >> 2 & 3) * 3 + 7) * 2` and `((i & 7) + 4) * 2` (i the record's
+index) and rebuilds the group matrix the way `0x8002DFFC` does: RotMatrix of the angles, columns scaled by `+0x12/
++0x14/+0x16`. The same pass steps the sprite frame counter `gp+0x898` (0..23) by `ElapsedFields`.
+
+In Andy's House record 86 names entry `0x40` (`0x80146678`, kind `0x49`), the one moving instance of the 157 visible
+(`0x8014FA24`, group `0x801AFC4C`); with two fields a frame it turns by 20/40/40.
 
 ## The camera `0x8002C848`
 
