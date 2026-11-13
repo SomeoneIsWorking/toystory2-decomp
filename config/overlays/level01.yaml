@@ -1,0 +1,38 @@
+name: LEVEL.BIN
+sha1: 7f512da2fd70117db4061fce392b438bafc2810a
+options:
+  basename: level01
+  target_path: disc/LEVEL01/LEVEL.BIN
+  base_path: ../..
+  platform: psx
+  compiler: PSYQ
+  asm_path: asm/level01
+  src_path: src/level01
+  asset_path: assets/level01
+  build_path: build
+  ld_script_path: build/level01.ld
+  find_file_boundaries: False
+  gp_value: 0x800A0CD8
+  o_as_suffix: True
+  use_legacy_include_asm: False
+  section_order: [".rodata", ".text", ".data", ".bss"]
+  symbol_addrs_path:
+    - config/symbols/slus_008.93.txt
+    - config/symbols/level01.txt
+  undefined_funcs_auto_path: build/level01.undefined_funcs_auto.txt
+  undefined_syms_auto_path: build/level01.undefined_syms_auto.txt
+  subalign: 2
+  string_encoding: ASCII
+  data_string_encoding: ASCII
+  rodata_string_guesser_level: 2
+  data_string_guesser_level: 2
+segments:
+  - name: level01
+    type: code
+    start: 0x0
+    vram: 0x800D12C0
+    subsegments:
+      - [0x0, data]
+      - [0x4, asm]
+      - [0x28BC, data]
+  - [0x362C]
