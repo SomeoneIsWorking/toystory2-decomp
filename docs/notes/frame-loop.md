@@ -55,6 +55,29 @@ through `0x800100E4`, 2 through the hierarchical drawer `0x8002AC40`, 3 through 
 `0x8002AC40` with a matrix scaled by s16 `+0x12` (widened by `512 / 320`) and `+0x14`. The depth bias table is `0x80097DC8`, indexed by byte `+0x12 & 0xF` (`+0x18` for
 9/0xC).
 
+The entries live in per-area arrays of `0x14`-byte records: cull-sphere centre s32 `+0x00/+0x04/+0x08`, radius u16
+`+0x0C`, kind `+0xE`, area `+0xF`, group `+0x10`. `0x80020074(entries, view, eye)` walks them area by area (area
+records of `0x34` at `0x800A8860`, byte `+0x10` the area's entry bytes) and fills `0x800BB4D8` with the visible
+entries whose kind lacks `0x40` and `0x800C0AB0` with those that have it; it returns the two counts as low and high
+halves. `0x80027724(count, &previousCount, list, previous)` merges each sorted list against the previous frame's
+(`0x800A8C70` count `0x800A146C`, `0x800B19C8` count `0x800A14F4`): an entry that left has its packets released
+through `0x80017C60` (the OT cursor `0x800A151C`), one that entered has its counters reset and packets taken by
+`0x80023C14`, and the entries holding packets become the previous list.
+
+The group's first nine s16 are the object's rotation matrix, which `0x8001F848(group)` (kinds 1/4/9/0xC with
+nonzero angles) composes with the camera rotation. `0x8002DFFC(index, sx, sy, sz)`, `0x8002E2A4` and `0x8002E52C`
+set it from an `AreaObjects` (`0x800A1274`: a count, then entry pointers) index: per-axis scales into instance
+`+0x12/+0x14/+0x16`, then RotMatrix of the instance angles `+0x0C` into the group, each column scaled, stored
+column by column. Their callers are update code (`0x80065CD0`, `0x800660B0`, `0x80066328`, `0x8005AE8C`,
+`0x8006F938`, `0x80076334`..`0x8007678C`, `0x80077C68`, `0x80077D44`, `0x8007844C`, `0x8007855C`,
+`0x8007D0E4`..`0x8007D4D8`).
+
+In Andy's House, idle, one of the 157 visible instances moves: `0x8014FA24` (kind `0x49`), its position still and
+its angle halfwords `+0x0C/+0x0E/+0x10` advancing by 40/80/80 a tick. Its group matrix (`0x801AFC4C`) is rewritten
+once a tick by the draw section: a call of the world pass `0x8002A070` alone rewrites it, and with frame
+interpolation on every replay of the section rewrites it to the same value. Which instruction stores it is not
+recorded yet; under the dynarec a store watch reports the registers of the last synchronisation, not of the store.
+
 ## The camera `0x8002C848`
 
 Leaves the camera's MATRIX at `0x1F800394` (RotMatrix of its angles, the x row widened by `512 / 320`, rows 0 and 1
