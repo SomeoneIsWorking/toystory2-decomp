@@ -11,11 +11,20 @@ Reached through `0x80021028` once per field. It draws the OT the previous update
 2. `0x8003DEC4(buffer)`: screen bars into the OT, the env's clear colour;
 3. `0x8003E498(buffer)`, a VRAM copy (effect mode 1), or `0x8003EFD4`, OT links (mode 2); the effect runs while
    `gp+0x588 + gp+0x610 != 0`, the copy when either mode is 1;
-4. `0x8002DC2C`: the colour tint into the OT;
+4. `0x8002DC2C`: the colour tint into the OT (below);
 5. DrawOTag of the buffer's OT head (`+0x2B4 + 0x57B * 4`, ClearOTagR);
 6. the pad decode `0x8003B33C`, the buffer swap and ClearOTagR of the next buffer.
 
 The effect and tint calls take no arguments.
+
+### The tint `0x8002DC2C`
+
+Skipped while the tint colour, s16 `0x800A1340`/`0x800A15F4`/`0x800A14D0`, is `0x80` on all three. Otherwise it
+links a TILE at x 0, width `0x200` (`0x8002DC78..0x8002DCB4`), from y `0x800A14C8` to 240 when that word is
+non-negative (into the OT pointer) or the whole 240 lines (into the buffer's OT head), then a DR_MODE: additive
+by `(c - 0x80) * 2` when any channel is above `0x80`, else subtractive by `(0x80 - c) * 2`. Its writers are the fade
+`FadeTo` `0x80077598` / `AdvanceFrame` `0x800775CC`, the level start's reset `0x8007BEC4`, the water line in
+`0x80078DE0` (`0x8007954C`: the line and the area's colour) and the LEVEL03/LEVEL04_1 modules.
 
 ## The resident update
 
@@ -42,8 +51,20 @@ Besides drawing it sorts the draw list in place, poses animated actors (`0x80042
 `0x800A9618`), steps the OT write cursor `0x800A151C`, consumes a streaming list (`+0x18` of the nearest area), and
 calls DrawSync and GetRCnt. It links into a table the display cleared, so it rebuilds its OT entries each run.
 
-`0x80040160` reads eight VRAM pixels back (StoreImage at `0x3C0,0x7F/0x7D`) and writes them again while `0x800A1568`
-is set for the buffer. The profiler mark `0x8003E938` reads root counter 1.
+The profiler mark `0x8003E938` reads root counter 1.
+
+### The glow probe `0x80040160`
+
+Its only caller is the world pass (`0x8002A7D0`). It first calls `0x80040400`, which links each light's probe
+primitive into the OT under a draw environment aimed at the strip and sets the strip flag `0x800A1568 + 2 * buffer`
+(s16) of the buffer `gp+0x3CC` (`0x800A10A4`) still names from the previous run. It then sets `0x800A10A4` to the buffer being built (0 for `0x801BBD28`, else 1),
+and while that buffer's flag is set it StoreImages the 8x1 strip at `(0x3C0, 0x7F - 2 * buffer)`, calls
+`0x80040DB4(i)` for each pixel `i` that reads `0x3E0` or `0x3C0` (the probe reached the screen: `0x80040DB4` links
+light `i`'s glow quad, code `0x2C`, at the light's screen place from `0x800BEA8C`), writes `0x7FF` to all eight and
+LoadImages them back. It ends by clearing the flag and the s32 `0x800A12E0 + 4 * buffer`. The strip it reads was
+drawn when the deferred display drew an earlier frame's OT; nothing reaches VRAM between the start of the world pass
+and the read. Lights with probes: the attract demo of Andy's House (its first 2 s) and level index 11 (id `0xC`)
+throughout.
 
 ### World objects `0x8002622C(list, count, ot, pass)`
 
